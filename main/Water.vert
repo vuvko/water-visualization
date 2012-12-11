@@ -18,6 +18,8 @@ out vec2 fragmentTexCoord;
 
 out vec4 worldPos;
 out vec4 viewPos;
+out vec3 camPos;
+out vec3 lightPos;
 
 uniform vec3 g_lightPos;
 uniform vec3 g_camPos;
@@ -31,7 +33,7 @@ void main(void)
 
   float c = textureLod(inPositions, vec2(x,y)*invSize, 0).x;
 
-  vec4 vpos = vertex + vec4(0,c,0,0);  // displace vertex position 
+  vec4 vpos = vertex + vec4(0,0,c,0);  // displace vertex position 
 
   float l = textureLod(inPositions, vec2(x-1, y)*invSize, 0).x;
   float r = textureLod(inPositions, vec2(x+1, y)*invSize, 0).x;
@@ -40,11 +42,15 @@ void main(void)
 
   float nx = l-r;
   float ny = u-d;
-  vec3 normal = normalize(vec3(nx,ny,2.0/float(gridSizeX)));
+  vec3 normal =  normalize(vec3(nx, ny, 2.0 / float(gridSizeX)));
   
   worldPos = objectMatrix*vpos;
   viewPos  = modelViewMatrix*worldPos;
   
   gl_Position    = projectionMatrix*viewPos;
-  fragmentNormal = vec3(objectMatrix*normalize(vec4(normal, 1.0)));
+  fragmentNormal = vec3(objectMatrix*vec4(normal, 0));
+  //fragmentNormal = vec3(0, 0, 1);
+
+  camPos = g_camPos;
+  lightPos = g_lightPos;
 }

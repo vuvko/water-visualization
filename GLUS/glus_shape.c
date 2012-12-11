@@ -730,13 +730,13 @@ GLUSvoid GLUSAPIENTRY glusCreatePlaneSlicedf(GLUSshape* shape, GLUSfloat halfExt
       tz = ((float)j)/((float)numberSlices);
 
 			shape->vertices[vertexIndex + 0] = minX + tx*(maxX-minX); 
-			shape->vertices[vertexIndex + 1] = 0; 
-			shape->vertices[vertexIndex + 2] = minZ + tz*(maxZ-minZ);
+			shape->vertices[vertexIndex + 2] = 0; 
+			shape->vertices[vertexIndex + 1] = minZ + tz*(maxZ-minZ);
 			shape->vertices[vertexIndex + 3] = 1.0f;
 
 			shape->normals[normalIndex + 0] = 0.0f;
-			shape->normals[normalIndex + 1] = 1.0f;
-			shape->normals[normalIndex + 2] = 0.0f;
+			shape->normals[normalIndex + 1] = 0.0f;
+			shape->normals[normalIndex + 2] = 1.0f;
 
 			glusCrossf(&shape->tangents[tangentIndex], &shape->normals[normalIndex], helpVector);
 

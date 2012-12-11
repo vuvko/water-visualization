@@ -25,18 +25,20 @@ struct MyInput
 {
   MyInput() 
   {
-    cam_rot[0] = cam_rot[1] = cam_rot[2] = cam_rot[3] = 0.f;
+    cam_rot[0] = 110;
+    cam_rot[1] = 330;
+    scene_pos[0] = scene_pos[1] = scene_pos[2] = 0;
     mx = my = 0;
     rdown = ldown = false;
-    cam_dist = 25.0f;
+    cam_dist = 20.0f;
   }
 
   int mx;
   int my;
   bool rdown;
   bool ldown;
-  float cam_rot[4];
-  float cam_pos[4];
+  float cam_rot[2];
+  float scene_pos[3];
 
   float cam_dist;
 
@@ -48,7 +50,11 @@ int g_height = 0;
 float4x4 g_projectionMatrix;
 
 float3 g_camPos(0,0,0); // z will be assigned from input.cam_dist
-float3 g_lightPos(10, 10, 10);
+float3 g_lightPos(0, 0, 10);
+
+MyInput g_fixedCam[3];
+
+bool g_simulate = true;
 
 
 SimpleMesh* g_pRoomMesh  = NULL;
@@ -86,6 +92,27 @@ GLUSboolean init(GLUSvoid)
 {
   try 
   {
+    // First camera position
+    g_fixedCam[0].cam_dist = 25;
+    g_fixedCam[0].cam_rot[0] = 100;
+    g_fixedCam[0].cam_rot[1] = 0;
+    g_fixedCam[0].scene_pos[0] = g_fixedCam[0].scene_pos[1] = 0;
+    g_fixedCam[0].scene_pos[2] = 1;
+
+    // Second camera position
+    g_fixedCam[1].cam_dist = 20;
+    g_fixedCam[1].cam_rot[0] = 115;
+    g_fixedCam[1].cam_rot[1] = 30;
+    g_fixedCam[1].scene_pos[0] = g_fixedCam[1].scene_pos[1] = g_fixedCam[1].scene_pos[2] = 1;
+
+    // Third camera position
+    g_fixedCam[2].cam_dist = 0.25;
+    g_fixedCam[2].cam_rot[0] = 80;
+    g_fixedCam[2].cam_rot[1] = 330;
+    g_fixedCam[2].scene_pos[0] = -3;
+    g_fixedCam[2].scene_pos[1] = 5;
+    g_fixedCam[2].scene_pos[2] = -2;
+
     PrintGLInfo();
     SetVSync(1);
 
@@ -104,7 +131,6 @@ GLUSboolean init(GLUSvoid)
 
     glTexImage2D(GL_TEXTURE_2D, 0, image.format, image.width, image.height, 0, image.format, GL_UNSIGNED_BYTE, image.data); CHECK_GL_ERRORS;
 
-    // Mipmap generation is now included in OpenGL 3 and above
     glGenerateMipmap(GL_TEXTURE_2D);
 
     // Trilinear filtering
@@ -145,18 +171,18 @@ GLUSvoid mouse(GLUSboolean pressed, GLUSuint button, GLUSuint x, GLUSuint y)
 
   if (button & 1)// left button
   {
-    input.ldown=true;		
+    //input.ldown=true;		
     input.mx=x;			
     input.my=y;
   }
 
   if (button & 4)	// right button
   {
-    input.rdown=true;
+    //input.rdown=true;
     input.mx=x;
     input.my=y;
 
-    g_pWater->AddWave((GLUSfloat)y / g_height, (GLUSfloat)x / g_width);
+    g_pWater->AddWave((GLUSfloat)x / g_width, (GLUSfloat)y / g_height);
   }
 }
 
@@ -164,12 +190,21 @@ GLUSvoid mouseMove(GLUSuint button, GLUSint x, GLUSint y)
 {
   if(button & 1)		// left button
   {
-    int x1 = x;
-    int y1 = y;
+    input.cam_rot[0] += (input.my - y) / 5.0;	// change rotation
+    input.cam_rot[1] += (input.mx - x) / 5.0;
+    
+    if (input.cam_rot[0] > 360) {
+      input.cam_rot[0] = 0;
+    } else if (input.cam_rot[0] < 0) {
+      input.cam_rot[0] = 360;
+    }
 
-    input.cam_rot[0] += 0.25f*(y1-input.my);	// change rotation
-    input.cam_rot[1] += 0.25f*(x1-input.mx);
-
+    if (input.cam_rot[1] > 360) {
+      input.cam_rot[1] = 0;
+    } else if (input.cam_rot[1] < 0) {
+      input.cam_rot[1] = 360;
+    }
+    
     input.mx=x;
     input.my=y;
   }
@@ -177,7 +212,7 @@ GLUSvoid mouseMove(GLUSuint button, GLUSint x, GLUSint y)
   if(button & 4)
   {
     //g_pWater->AddWave(0.5, 0.5); // 
-    g_pWater->AddWave((GLUSfloat)y / g_height, (GLUSfloat)x / g_width);
+    g_pWater->AddWave((GLUSfloat)x / g_width, (GLUSfloat)y / g_height);
   }
 
 }
@@ -185,33 +220,83 @@ GLUSvoid mouseMove(GLUSuint button, GLUSint x, GLUSint y)
 GLUSvoid keyboard(GLUSboolean pressed, GLUSuint key)
 {
   double dx = 0, dy = 0, dz = 0, shift = 0.25;
-  double r_psi = input.cam_rot[1] * PIf / 180;
-  double r_phi = input.cam_rot[0] * PIf / 180;
-  //cerr << input.cam_rot[0] << endl;
+  double r_psi = input.cam_rot[0] * PIf / 180;
+  double r_phi = input.cam_rot[1] * PIf / 180;
+
   switch(key)
   {
-  case 'w':
   case 'W':
     input.cam_dist -= shift;
+    if (input.cam_dist < eps) { // fixes the problem of inverting camera and controls
+      input.cam_dist = 5 * shift; // in order to minimize the number of operations
+      dx = input.cam_dist * sin(r_psi) * cos(r_phi);
+      dy = input.cam_dist * sin(r_psi) * sin(r_phi);
+      dz = input.cam_dist * cos(r_psi);
+    }
     break;
 
-  case 's':
   case 'S':
     input.cam_dist += shift;
     break;
 
-  case 'a':
   case 'A':
+    dx = -shift * cos(r_phi - PIf / 2);
+    dy = -shift * sin(r_phi - PIf / 2);
     break;
 
-  case 'd':
   case 'D':
+    dx = shift * cos(r_phi - PIf / 2);
+    dy = shift * sin(r_phi - PIf / 2);
+    break;
+
+  case VK_PRIOR: // PAGE UP key
+    dz += shift;
+    break;
+
+  case VK_NEXT: // PAGE DOWN key
+    dz -= shift;
+    break;
+
+  case VK_F1: // F1 - first camera
+    input.cam_dist = g_fixedCam[0].cam_dist;
+    input.cam_rot[0] = g_fixedCam[0].cam_rot[0];
+    input.cam_rot[1] = g_fixedCam[0].cam_rot[1];
+    input.scene_pos[0] = g_fixedCam[0].scene_pos[0];
+    input.scene_pos[1] = g_fixedCam[0].scene_pos[1];
+    input.scene_pos[2] = g_fixedCam[0].scene_pos[2];
+    break;
+
+  case VK_F2: // F2 - second camera
+    input.cam_dist = g_fixedCam[1].cam_dist;
+    input.cam_rot[0] = g_fixedCam[1].cam_rot[0];
+    input.cam_rot[1] = g_fixedCam[1].cam_rot[1];
+    input.scene_pos[0] = g_fixedCam[1].scene_pos[0];
+    input.scene_pos[1] = g_fixedCam[1].scene_pos[1];
+    input.scene_pos[2] = g_fixedCam[1].scene_pos[2];
+    break;
+
+  case VK_F3: // F3 - third camera
+    input.cam_dist = g_fixedCam[2].cam_dist;
+    input.cam_rot[0] = g_fixedCam[2].cam_rot[0];
+    input.cam_rot[1] = g_fixedCam[2].cam_rot[1];
+    input.scene_pos[0] = g_fixedCam[2].scene_pos[0];
+    input.scene_pos[1] = g_fixedCam[2].scene_pos[1];
+    input.scene_pos[2] = g_fixedCam[2].scene_pos[2];
+    break;
+
+
+  case VK_F5: // F5 - Pause
+    g_simulate = false;
+    break;
+
+  case VK_F6: // F6 - Resume
+    g_simulate = true;
     break;
   }
 
-  input.cam_pos[0] += dy;
-  input.cam_pos[1] += dx;
-  input.cam_pos[2] += dz;
+  input.scene_pos[0] += dx;
+  input.scene_pos[1] += dy;
+  input.scene_pos[2] += dz;
 
 }
 
@@ -232,21 +317,34 @@ GLUSboolean update(GLUSfloat time)
       g_pWater->AddWave(0.5, 0.5);
     }
 
-    g_camPos.z = input.cam_dist;
-    g_camPos.x = input.cam_pos[0];
-    g_camPos.y = input.cam_pos[1];
+    float3 camPos;
+    double r_psi = input.cam_rot[0] * PIf / 180;
+    double r_phi = input.cam_rot[1] * PIf / 180;
+    camPos.x = input.scene_pos[0] - input.cam_dist * sin(r_psi) * cos(r_phi);
+    camPos.y = input.scene_pos[1] - input.cam_dist * sin(r_psi) * sin(r_phi);
+    camPos.z = input.scene_pos[2] - input.cam_dist * cos(r_psi);
+    g_camPos.x = camPos.x;
+    g_camPos.y = camPos.y;
+    g_camPos.z = camPos.z;
 
+    /*
+    cout << "-----" << endl;
+    cout << input.scene_pos[0] << ' ' << input.scene_pos[1] << ' ' << input.scene_pos[2] << endl;
+    cout << input.cam_rot[0] << ' ' << input.cam_rot[1] << ' ' << input.cam_dist << endl;
+    cout << camPos.x << ' ' << camPos.y << ' ' << camPos.z << endl;
+    cout << sin(r_psi - PIf / 2) * cos(r_phi) << ' ' <<
+                               cos(r_psi - PIf / 2) << ' ' <<
+                               sin(r_psi - PIf / 2) * sin(r_phi) << endl;
+    */
+    //cout << g_camPos.x << ' ' << g_camPos.y << ' ' << g_camPos.z << endl;
+    
 
-    float4x4 model;
     float4x4 modelView;
-    glusLoadIdentityf(model.L()); 
-    glusRotateRzRyRxf(model.L(), input.cam_rot[0], input.cam_rot[1], 0.0f);
-    glusLookAtf(modelView.L(), g_camPos.x, g_camPos.y, g_camPos.z, 
-                               0.0f, 0.0f, 0.0f, 
-                               0.0f, 1.0f, 0.0f);                           // ... and the view matrix ...
-
-    glusMultMatrixf(modelView.L(), modelView.L(), model.L()); 	            // ... to get the final model view matrix
-
+    glusLookAtf(modelView.L(), camPos.x, camPos.y, camPos.z, 
+                               input.scene_pos[0], input.scene_pos[1], input.scene_pos[2],
+                               sin(r_psi - PIf / 2) * cos(r_phi),
+                               sin(r_psi - PIf / 2) * sin(r_phi),
+                               cos(r_psi - PIf / 2));                           // ... and the view matrix ...
   
     glViewport(0, 0, g_width, g_height);
     glClearColor(0.8f, 0.8f, 0.85f, 1.0f);
@@ -270,26 +368,72 @@ GLUSboolean update(GLUSfloat time)
 
       // calc matrices
       //
-      glusRotateRzRyRxf(rotationMatrix.L(), 90, 0.0f, 0.0f);
+      //glusRotateRzRyRxf(rotationMatrix.L(), 90, 0.0f, 0.0f);
       glusScalef(scaleMatrix.L(), 10, 10, 10);
-      glusTranslatef(translateMatrix.L(), 0,-4,0);
+      glusTranslatef(translateMatrix.L(), 0,0,-4);
       glusMultMatrixf(transformMatrix1.L(), rotationMatrix.L(), scaleMatrix.L());
       glusMultMatrixf(transformMatrix2.L(), translateMatrix.L(), transformMatrix1.L());
 
       // pass matrices to the shader
       //
       setUniform(g_renderRoomProg.program, "objectMatrix", transformMatrix2);
-      setUniform(g_renderRoomProg.program, "g_diffuseColor",  float3(0.5, 0.65, 0.85));
+      setUniform(g_renderRoomProg.program, "g_diffuseColor",  float3(0.9, 0.3, 0.25));
       setUniform(g_renderRoomProg.program, "g_specularColor", float3(0.55, 0.55, 0.55));
       bindTexture(g_renderRoomProg.program, 0, "u_texture", g_tileTexture);
     }
-    //glBindTexture(GL_TEXTURE_2D, g_tileTexture);
 
     g_pRoomMesh->Draw();
 
-    //glBindTexture(GL_TEXTURE_2D, 0);
+    // draw borders
+    //
+    
+    {
+      float4x4 rotationMatrix, scaleMatrix, translateMatrix;
+      float4x4 transformMatrix1, transformMatrix2;
 
-    g_pWater->SimStep(); // water simulation step
+      // calc matrices
+      //
+      glusRotateRzRyRxf(rotationMatrix.L(), 0, 0, 0);
+      glusScalef(scaleMatrix.L(), 10, 3, 1);
+      glusTranslatef(translateMatrix.L(), 0,-10,-1);
+      glusMultMatrixf(transformMatrix1.L(), rotationMatrix.L(), scaleMatrix.L());
+      glusMultMatrixf(transformMatrix2.L(), translateMatrix.L(), transformMatrix1.L());
+
+      // pass matrices to the shader
+      //
+      setUniform(g_renderRoomProg.program, "objectMatrix", transformMatrix2);
+      setUniform(g_renderRoomProg.program, "g_diffuseColor",  float3(0.9, 0.3, 0.25));
+      setUniform(g_renderRoomProg.program, "g_specularColor", float3(0.55, 0.55, 0.55));
+      bindTexture(g_renderRoomProg.program, 0, "u_texture", g_tileTexture);
+    }
+
+    g_pRoomMesh->Draw();
+
+    {
+      float4x4 rotationMatrix, scaleMatrix, translateMatrix;
+      float4x4 transformMatrix1, transformMatrix2;
+
+      // calc matrices
+      //
+      glusRotateRzRyRxf(rotationMatrix.L(), 0, 90, 0);
+      glusScalef(scaleMatrix.L(), 3, 10, 1);
+      glusTranslatef(translateMatrix.L(), 10,0,-1);
+      glusMultMatrixf(transformMatrix1.L(), rotationMatrix.L(), scaleMatrix.L());
+      glusMultMatrixf(transformMatrix2.L(), translateMatrix.L(), transformMatrix1.L());
+
+      // pass matrices to the shader
+      //
+      setUniform(g_renderRoomProg.program, "objectMatrix", transformMatrix2);
+      setUniform(g_renderRoomProg.program, "g_diffuseColor",  float3(0.9, 0.3, 0.25));
+      setUniform(g_renderRoomProg.program, "g_specularColor", float3(0.55, 0.55, 0.55));
+      bindTexture(g_renderRoomProg.program, 0, "u_texture", g_tileTexture);
+    }
+
+    g_pRoomMesh->Draw();
+    
+    if (g_simulate) { // everything that moves
+      g_pWater->SimStep(); // water simulation step
+    }
 
 
     // draw water
