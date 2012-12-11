@@ -16,6 +16,8 @@ out vec4 worldPos;
 out vec3 fragmentNormal;
 out vec3 lightTan;
 out vec3 camTan;
+out vec3 lightPos;
+out vec3 camPos;
 
 void main(void)
 {
@@ -24,13 +26,21 @@ void main(void)
 
   fragmentTexCoord = texCoord;
 
-  fragmentNormal = vec3(0, 1, 0);
+  fragmentNormal = normalize(objectMatrix*normal);
+  //fragmentNormal = vec3(0, 0, 1);
+  
+  vec3 light = objectMatrix*vec4(g_lightPos, 1) - viewPos;
+  vec3 cam = g_camPos;
+  //cam = modelViewMatrix * vec4(cam, 1) - viewPos;
+  cam = normalize(cam - vec3(viewPos));
 
-  vec3 light = normalize(g_lightPos - worldPos);
-  vec3 cam = normalize(g_camPos - worldPos);
+  //camTan = cross(fragmentNormal, (cross(cam, fragmentNormal)));
 
-  camTan = vec3(dot(cam, fragmentTexCoord), dot(cam, fragmentTexCoord), dot(cam, fragmentNormal));
-  lightTan = vec3(dot(light, fragmentTexCoord), dot(light, fragmentTexCoord), dot(light, fragmentNormal));
+  camTan = vec3(cam.x, cam.y, cam.z);
+  lightTan = vec3(light.x, light.z, light.y);
+  
+  camPos = g_camPos;
+  lightPos = g_lightPos;
 
   gl_Position    = projectionMatrix*viewPos;
 }
