@@ -60,7 +60,7 @@ bool g_simulate = true;
 SimpleMesh* g_pRoomMesh  = NULL;
 Water* g_pWater = NULL;
 
-static GLuint g_tileTexture;
+static GLuint g_tileTexture, g_tileTextureNorm;
 
 
 void SetVSync(bool sync)
@@ -124,10 +124,27 @@ GLUSboolean init(GLUSvoid)
     // Texture set up.
 
     GLUStgaimage image;
-    glusLoadTgaImage("Res/tile1.tga", &image);
+    glusLoadTgaImage("Res/floor.tga", &image);
 
     glGenTextures(1, &g_tileTexture); CHECK_GL_ERRORS;
     glBindTexture(GL_TEXTURE_2D, g_tileTexture); CHECK_GL_ERRORS;
+
+    glTexImage2D(GL_TEXTURE_2D, 0, image.format, image.width, image.height, 0, image.format, GL_UNSIGNED_BYTE, image.data); CHECK_GL_ERRORS;
+
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    // Trilinear filtering
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); CHECK_GL_ERRORS;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); CHECK_GL_ERRORS;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); CHECK_GL_ERRORS;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); CHECK_GL_ERRORS;
+
+    glBindTexture(GL_TEXTURE_2D, 0); CHECK_GL_ERRORS;
+
+    glusLoadTgaImage("Res/floor_n.tga", &image);
+
+    glGenTextures(1, &g_tileTextureNorm); CHECK_GL_ERRORS;
+    glBindTexture(GL_TEXTURE_2D, g_tileTextureNorm); CHECK_GL_ERRORS;
 
     glTexImage2D(GL_TEXTURE_2D, 0, image.format, image.width, image.height, 0, image.format, GL_UNSIGNED_BYTE, image.data); CHECK_GL_ERRORS;
 
@@ -368,7 +385,7 @@ GLUSboolean update(GLUSfloat time)
 
       // calc matrices
       //
-      //glusRotateRzRyRxf(rotationMatrix.L(), 90, 0.0f, 0.0f);
+      glusRotateRzRyRxf(rotationMatrix.L(), 0, 0, 0);
       glusScalef(scaleMatrix.L(), 10, 10, 10);
       glusTranslatef(translateMatrix.L(), 0,0,-4);
       glusMultMatrixf(transformMatrix1.L(), rotationMatrix.L(), scaleMatrix.L());
@@ -379,7 +396,8 @@ GLUSboolean update(GLUSfloat time)
       setUniform(g_renderRoomProg.program, "objectMatrix", transformMatrix2);
       setUniform(g_renderRoomProg.program, "g_diffuseColor",  float3(0.9, 0.3, 0.25));
       setUniform(g_renderRoomProg.program, "g_specularColor", float3(0.55, 0.55, 0.55));
-      bindTexture(g_renderRoomProg.program, 0, "u_texture", g_tileTexture);
+      bindTexture(g_renderRoomProg.program, 1, "u_texture", g_tileTexture);
+      bindTexture(g_renderRoomProg.program, 2, "u_texture_n", g_tileTextureNorm);
     }
 
     g_pRoomMesh->Draw();
@@ -393,7 +411,7 @@ GLUSboolean update(GLUSfloat time)
 
       // calc matrices
       //
-      glusRotateRzRyRxf(rotationMatrix.L(), 0, 0, 0);
+      glusRotateRzRyRxf(rotationMatrix.L(), 90, 0, 0);
       glusScalef(scaleMatrix.L(), 10, 3, 1);
       glusTranslatef(translateMatrix.L(), 0,-10,-1);
       glusMultMatrixf(transformMatrix1.L(), rotationMatrix.L(), scaleMatrix.L());
@@ -404,7 +422,8 @@ GLUSboolean update(GLUSfloat time)
       setUniform(g_renderRoomProg.program, "objectMatrix", transformMatrix2);
       setUniform(g_renderRoomProg.program, "g_diffuseColor",  float3(0.9, 0.3, 0.25));
       setUniform(g_renderRoomProg.program, "g_specularColor", float3(0.55, 0.55, 0.55));
-      bindTexture(g_renderRoomProg.program, 0, "u_texture", g_tileTexture);
+      bindTexture(g_renderRoomProg.program, 1, "u_texture", 0);
+      bindTexture(g_renderRoomProg.program, 2, "u_texture_n", 0);
     }
 
     g_pRoomMesh->Draw();
@@ -426,7 +445,8 @@ GLUSboolean update(GLUSfloat time)
       setUniform(g_renderRoomProg.program, "objectMatrix", transformMatrix2);
       setUniform(g_renderRoomProg.program, "g_diffuseColor",  float3(0.9, 0.3, 0.25));
       setUniform(g_renderRoomProg.program, "g_specularColor", float3(0.55, 0.55, 0.55));
-      bindTexture(g_renderRoomProg.program, 0, "u_texture", g_tileTexture);
+      bindTexture(g_renderRoomProg.program, 1, "u_texture", 0);
+      bindTexture(g_renderRoomProg.program, 2, "u_texture_n", 0);
     }
 
     g_pRoomMesh->Draw();
@@ -458,7 +478,7 @@ GLUSboolean update(GLUSfloat time)
 
       setUniform(g_pWater->GetRenderProgram(), "objectMatrix", transformMatrix2);
     }
-
+    
     g_pWater->Draw();
 
     return GLUS_TRUE;
