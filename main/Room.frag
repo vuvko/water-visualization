@@ -30,17 +30,17 @@ void main(void)
   vec2  dtex   = camTan.xy * scale / ( numSteps * camTan.z ); 
   float height = 1;                                
   vec2  tex    = fragmentTexCoord;                 
-  float he      = 1 - texture ( u_texture_n, tex ).a;     
+  float h      = 1 - texture ( u_texture_n, tex ).a;     
 	
-  while ( he < height ) {
+  while ( h < height ) {
     height -= step;
     tex    += dtex;
-    he       = 1 - texture ( u_texture_n, tex ).a;
+    h     = 1 - texture ( u_texture_n, tex ).a;
   }
   
   vec2  prev   = tex - dtex;                                                
   float hPrev  = texture ( u_texture_n, prev ).a - (height + step);
-  float hCur   = he - height;
+  float hCur   = h - height;
   float weight = hCur / (hCur - hPrev );
 
   tex = weight * prev + (1.0 - weight) * tex;         

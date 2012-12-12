@@ -15,8 +15,8 @@ uniform sampler2D inPosTexture;
 
 void main(void)
 {	  
-  const vec4  diffColor = vec4 ( 0.5, 0.5, 1.0, 1.0);
-  const vec4  specColor = vec4 ( 0.5, 0.5, 0.5, 1.0);
+  const vec4  diffColor = vec4 ( 0.5, 0.5, 1.0, 0.7);
+  const vec4  specColor = vec4 ( 0.5, 0.5, 0.5, 0.5);
   const float specPower = 30.0;
 
   vec3 light = normalize(lightPos - worldPos);
@@ -28,5 +28,5 @@ void main(void)
   vec4 diff = diffColor * max(dot(norm, light), 0.0);
   vec4 spec = specColor * pow(max(dot(norm, h), 0.0), specPower);
 
-  fragColor = vec4(vec3(diff + spec), 0.5);
+  fragColor = diff + spec;
 }
