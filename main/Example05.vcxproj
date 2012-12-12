@@ -103,9 +103,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Quad.vert" />
-    <None Include="Res\tile.tga" />
-    <None Include="Res\tile1.tga" />
-    <None Include="Res\tileNorm.tga" />
+    <None Include="Res\floor.tga" />
+    <None Include="Res\floor_n.tga" />
     <None Include="Room.frag" />
     <None Include="Room.vert" />
     <None Include="Water.frag" />
