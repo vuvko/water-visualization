@@ -16,9 +16,6 @@
  */
 
 #include <windows.h>
-
-#include <GL/gl.h>
-
 #include "GL/glus.h"
 
 #ifndef WGL_CONTEXT_DEBUG_BIT_ARB

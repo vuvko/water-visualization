@@ -24,10 +24,20 @@
 extern "C" {
 #endif
 
+#include <ctype.h>
+#include <math.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #if defined(_WIN32) && !defined(APIENTRY) && !defined(__CYGWIN__) && !defined(__SCITECH_SNAP__)
 #define WIN32_LEAN_AND_MEAN 1
 #include <windows.h>
 #endif
+
+#include <gl/glew.h>
+#include <GL/GL.h>
 
 
 #ifndef GLUSAPIENTRY
@@ -103,7 +113,7 @@ typedef struct _GLUSshaderprogram
 	GLUSuint	fragment;
 
 } GLUSshaderprogram;
-
+/*
 typedef struct _GLUSshape
 {
 	GLUSfloat*	vertices;
@@ -119,6 +129,67 @@ typedef struct _GLUSshape
 	GLUSuint	numberVertices;
 
 	GLUSuint	numberIndices;
+
+} GLUSshape;
+*/
+
+/**
+ * Structure for holding geometry data.
+ */
+typedef struct _GLUSshape
+{
+	/**
+	 * Vertices in homogeneous coordinates.
+	 */
+    GLUSfloat* vertices;
+
+    /**
+     * Normals.
+     */
+    GLUSfloat* normals;
+
+    /**
+     * Tangents.
+     */
+    GLUSfloat* tangents;
+
+    /**
+     * Bitangents.
+     */
+    GLUSfloat* bitangents;
+
+    /**
+     * Texture coordinates.
+     */
+    GLUSfloat* texCoords;
+
+    /**
+     * All above values in one array. Not created by the model loader.
+     */
+    GLUSfloat* allAttributes;
+
+    /**
+     * Indices.
+     */
+    GLUSuint* indices;
+
+    /**
+     * Number of vertices.
+     */
+    GLUSuint numberVertices;
+
+    /**
+     * Number of indices.
+     */
+    GLUSuint numberIndices;
+
+    /**
+     * Triangle render mode - could be either:
+     *
+     * GL_TRIANGLES
+     * GL_TRIANGLE_STRIP
+     */
+    GLUSenum mode;
 
 } GLUSshape;
 
@@ -174,6 +245,170 @@ GLUSAPI GLUSvoid GLUSAPIENTRY glusNormalizef(GLUSfloat vector[3]);
 GLUSAPI GLUSfloat GLUSAPIENTRY glusDotf(const GLUSfloat vector0[3], const GLUSfloat vector1[3]);
 
 GLUSAPI GLUSvoid GLUSAPIENTRY glusCrossf(GLUSfloat result[3], const GLUSfloat vector0[3], const GLUSfloat vector1[3]);
+
+//
+// Vector functions.
+//
+
+/**
+ * Copies a 3D Vector.
+ *
+ * @param result The destination vector.
+ * @param vector The source vector.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusVector3Copyf(GLUSfloat result[3], const GLUSfloat vector[3]);
+
+/**
+ * Copies a 2D Vector.
+ *
+ * @param result The destination vector.
+ * @param vector The source vector.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusVector2Copyf(GLUSfloat result[2], const GLUSfloat vector[2]);
+
+/**
+ * Adds a 3D Vector to another.
+ *
+ * @param result The final vector.
+ * @param vector0 The first vector.
+ * @param vector1 The second vector.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusVector3AddVector3f(GLUSfloat result[3], const GLUSfloat vector0[3], const GLUSfloat vector1[3]);
+
+/**
+ * Adds a 2D Vector to another.
+ *
+ * @param result The final vector.
+ * @param vector0 The first vector.
+ * @param vector1 The second vector.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusVector2AddVector2f(GLUSfloat result[2], const GLUSfloat vector0[2], const GLUSfloat vector1[2]);
+
+/**
+ * Subtracts a 3D Vector from another.
+ *
+ * @param result The final vector.
+ * @param vector0 The vector subtracted by vector1.
+ * @param vector1 The vector subtracted from vector0.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusVector3SubtractVector3f(GLUSfloat result[3], const GLUSfloat vector0[3], const GLUSfloat vector1[3]);
+
+/**
+ * Subtracts a 2D Vector from another.
+ *
+ * @param result The final vector.
+ * @param vector0 The vector subtracted by vector1.
+ * @param vector1 The vector subtracted from vector0.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusVector2SubtractVector2f(GLUSfloat result[2], const GLUSfloat vector0[2], const GLUSfloat vector1[2]);
+
+/**
+ * Multiplies a 3D Vector by a scalar.
+ *
+ * @param result The final vector.
+ * @param vector The used vector for multiplication.
+ * @param scalar The scalar.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusVector3MultiplyScalarf(GLUSfloat result[3], const GLUSfloat vector[3], const GLUSfloat scalar);
+
+/**
+ * Multiplies a 2D Vector by a scalar.
+ *
+ * @param result The final vector.
+ * @param vector The used vector for multiplication.
+ * @param scalar The scalar.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusVector2MultiplyScalarf(GLUSfloat result[2], const GLUSfloat vector[2], const GLUSfloat scalar);
+
+/**
+ * Calculates the length of a 3D Vector.
+ *
+ * @param vector The used vector.
+ *
+ * @return The length of the vector.
+ */
+GLUSAPI GLUSfloat GLUSAPIENTRY glusVector3Lengthf(const GLUSfloat vector[3]);
+
+/**
+ * Calculates the length of a 2D Vector.
+ *
+ * @param vector The used vector.
+ *
+ * @return The length of the vector.
+ */
+GLUSAPI GLUSfloat GLUSAPIENTRY glusVector2Lengthf(const GLUSfloat vector[2]);
+
+/**
+ * Normalizes the given 3D Vector.
+ *
+ * @param vector The vector to normalize.
+ *
+ * @return GLUS_TRUE, if normalization succeeded.
+ */
+GLUSAPI GLUSboolean GLUSAPIENTRY glusVector3Normalizef(GLUSfloat vector[3]);
+
+/**
+ * Normalizes the given 2D Vector.
+ *
+ * @param vector The vector to normalize.
+ *
+ * @return GLUS_TRUE, if normalization succeeded.
+ */
+GLUSAPI GLUSboolean GLUSAPIENTRY glusVector2Normalizef(GLUSfloat vector[2]);
+
+/**
+ * Calculates the dot product of two 3D vectors.
+ *
+ * @param vector0 The first vector.
+ * @param vector1 The second vector.
+ *
+ * @return The dot product.
+ */
+GLUSAPI GLUSfloat GLUSAPIENTRY glusVector3Dotf(const GLUSfloat vector0[3], const GLUSfloat vector1[3]);
+
+/**
+ * Calculates the dot product of two 2D vectors.
+ *
+ * @param vector0 The first vector.
+ * @param vector1 The second vector.
+ *
+ * @return The dot product.
+ */
+GLUSAPI GLUSfloat GLUSAPIENTRY glusVector2Dotf(const GLUSfloat vector0[2], const GLUSfloat vector1[2]);
+
+/**
+ * Calculates the cross product of two 3D vectors: vector0 x vector1.
+ *
+ * @param result The resulting vector from the cross product.
+ * @param vector0 The first vector.
+ * @param vector1 The second vector.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusVector3Crossf(GLUSfloat result[3], const GLUSfloat vector0[3], const GLUSfloat vector1[3]);
+
+/**
+ * Creates a quaternion out of a 3D vector.
+ *
+ * @param result The resulting quaternion.
+ * @param vector The used vector.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusVector3GetQuaternionf(GLUSfloat result[4], const GLUSfloat vector[3]);
+
+/**
+ * Creates a 3D point, given as homogeneous coordinates, out of a 3D vector.
+ *
+ * @param result The resulting point.
+ * @param vector The used vector.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusVector3GetPoint4f(GLUSfloat result[4], const GLUSfloat vector[3]);
+
+/**
+ * Creates a 2D point, given as homogeneous coordinates, out of a 2D vector.
+ *
+ * @param result The resulting point.
+ * @param vector The used vector.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusVector2GetPoint3f(GLUSfloat result[3], const GLUSfloat vector[2]);
+
 
 //
 
@@ -236,6 +471,148 @@ GLUSAPI GLUSvoid GLUSAPIENTRY glusCreateTorusf(GLUSshape* shape, GLUSfloat inner
 GLUSAPI GLUSvoid GLUSAPIENTRY glusDestroyShapef(GLUSshape* shape);
 
 GLUSAPI GLUSvoid GLUSAPIENTRY glusPrintErrorMsg(GLenum);
+
+/**
+ * Calculates and creates the tangent and bitangent vectors. Uses the previous created memory for the tangents and bitangents.
+ *
+ * @param shape The structure which will be filled with the calculated vectors.
+ *
+ * @return GLUS_TRUE, if creation succeeded.
+ */
+GLUSAPI GLUSboolean GLUSAPIENTRY glusCalculateTangentSpacef(GLUSshape* shape);
+
+//
+// Point functions.
+//
+
+/**
+ * Copies a 3D point, given as homogeneous coordinates.
+ *
+ * @param result The destination point.
+ * @param point The source point.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusPoint4Copyf(GLUSfloat result[4], const GLUSfloat point[4]);
+
+/**
+ * Copies a 2D point, given as homogeneous coordinates.
+ *
+ * @param result The destination point.
+ * @param point The source point.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusPoint3Copyf(GLUSfloat result[3], const GLUSfloat point[3]);
+
+/**
+ * Subtracts a 3D point, given as homogeneous coordinates, from another and calculates a 3D vector.
+ *
+ * @param result The resulting vector.
+ * @param point0 The point subtracted by point1.
+ * @param point1 The point subtracted from point0.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusPoint4SubtractPoint4f(GLUSfloat result[3], const GLUSfloat point0[4], const GLUSfloat point1[4]);
+
+/**
+ * Subtracts a 2D point, given as homogeneous coordinates, from another and calculates a 2D vector.
+ *
+ * @param result The resulting vector.
+ * @param point0 The point subtracted by point1.
+ * @param point1 The point subtracted from point0.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusPoint3SubtractPoint3f(GLUSfloat result[2], const GLUSfloat point0[3], const GLUSfloat point1[3]);
+
+/**
+ * Adds a vector to a 3D point, given as homogeneous coordinates. Result is the new point.
+ *
+ * @param result The resulting point.
+ * @param point The point.
+ * @param vector The vector, which is added to the point.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusPoint4AddVector3f(GLUSfloat result[4], const GLUSfloat point[4], const GLUSfloat vector[3]);
+
+/**
+ * Adds a vector to a 2D point, given as homogeneous coordinates. Result is the new point.
+ *
+ * @param result The resulting point.
+ * @param point The point.
+ * @param vector The vector, which is added to the point.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusPoint3AddVector2f(GLUSfloat result[3], const GLUSfloat point[3], const GLUSfloat vector[2]);
+
+/**
+ * Subtracts a vector from a 3D point, given as homogeneous coordinates. Result is the new point.
+ *
+ * @param result The resulting point.
+ * @param point The point.
+ * @param vector The vector, which is subtracted from the point.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusPoint4SubtractVector3f(GLUSfloat result[4], const GLUSfloat point[4], const GLUSfloat vector[3]);
+
+/**
+ * Subtracts a vector from a 2D point, given as homogeneous coordinates. Result is the new point.
+ *
+ * @param result The resulting point.
+ * @param point The point.
+ * @param vector The vector, which is subtracted from the point.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusPoint3SubtractVector2f(GLUSfloat result[3], const GLUSfloat point[3], const GLUSfloat vector[2]);
+
+/**
+ * Converts a 3D point, given as homogeneous coordinates, to a quaternion.
+ *
+ * @param result The resulting quaternion.
+ * @param point The point, which is converted.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusPoint4GetQuaternionf(GLUSfloat result[4], const GLUSfloat point[4]);
+
+/**
+ * Converts a 3D point, given as homogeneous coordinates, to a vector.
+ *
+ * @param result The resulting vector.
+ * @param point The point, which is converted.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusPoint4GetVector3f(GLUSfloat result[3], const GLUSfloat point[4]);
+
+/**
+ * Converts a 2D point, given as homogeneous coordinates, to a vector.
+ *
+ * @param result The resulting vector.
+ * @param point The point, which is converted.
+ */
+GLUSAPI GLUSvoid GLUSAPIENTRY glusPoint3GetVector2f(GLUSfloat result[2], const GLUSfloat point[3]);
+
+/**
+ * Calculates the distance of two 3D points, given as homogeneous coordinates.
+ *
+ * @param point0 The first point.
+ * @param point1 The second point.
+ *
+ * @return The distance of the two points.
+ */
+GLUSAPI GLUSfloat GLUSAPIENTRY glusPoint4Distancef(const GLUSfloat point0[4], const GLUSfloat point1[4]);
+
+/**
+ * Calculates the distance of two 2D points, given as homogeneous coordinates.
+ *
+ * @param point0 The first point.
+ * @param point1 The second point.
+ *
+ * @return The distance of the two points.
+ */
+GLUSAPI GLUSfloat GLUSAPIENTRY glusPoint3Distancef(const GLUSfloat point0[3], const GLUSfloat point1[3]);
+
+//
+// Model loading functions.
+//
+
+/**
+ * Loads a wavefront object file.
+ *
+ * @param filename The name of the wavefront file including extension.
+ * @param shape The data is stored into this structure.
+ *
+ * @return GLUS_TRUE, if loading succeeded.
+ */
+GLUSAPI GLUSboolean GLUSAPIENTRY glusLoadObjFile(const GLUSchar* filename, GLUSshape* shape);
+
 
 #ifdef __cplusplus
 }

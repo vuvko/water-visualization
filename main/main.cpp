@@ -50,7 +50,7 @@ int g_height = 0;
 float4x4 g_projectionMatrix;
 
 float3 g_camPos(0,0,0); // z will be assigned from input.cam_dist
-float3 g_lightPos(0, 0, 10);
+float3 g_lightPos(1, 2, 15);
 
 MyInput g_fixedCam[3];
 
@@ -60,7 +60,15 @@ bool g_simulate = true;
 SimpleMesh* g_pRoomMesh  = NULL;
 Water* g_pWater = NULL;
 
-static GLuint g_tileTexture, g_tileTextureNorm;
+static GLuint g_tileTexture, g_tileTextureNorm, g_wallTexture, g_wallTextureNorm;
+
+static GLuint g_verticesVBO;
+
+static GLuint g_normalsVBO;
+
+static GLuint g_vao;
+
+static GLuint g_numberVertices;
 
 
 void SetVSync(bool sync)
@@ -106,12 +114,12 @@ GLUSboolean init(GLUSvoid)
     g_fixedCam[1].scene_pos[0] = g_fixedCam[1].scene_pos[1] = g_fixedCam[1].scene_pos[2] = 1;
 
     // Third camera position
-    g_fixedCam[2].cam_dist = 0.25;
-    g_fixedCam[2].cam_rot[0] = 80;
+    g_fixedCam[2].cam_dist = 2.5;
+    g_fixedCam[2].cam_rot[0] = 85;
     g_fixedCam[2].cam_rot[1] = 330;
     g_fixedCam[2].scene_pos[0] = -3;
-    g_fixedCam[2].scene_pos[1] = 5;
-    g_fixedCam[2].scene_pos[2] = -2;
+    g_fixedCam[2].scene_pos[1] = 2.7;
+    g_fixedCam[2].scene_pos[2] = -4;
 
     PrintGLInfo();
     SetVSync(1);
@@ -124,7 +132,7 @@ GLUSboolean init(GLUSvoid)
     // Texture set up.
 
     GLUStgaimage image;
-    glusLoadTgaImage("Res/floor.tga", &image);
+    glusLoadTgaImage("Res/stone.tga", &image);
 
     glGenTextures(1, &g_tileTexture); CHECK_GL_ERRORS;
     glBindTexture(GL_TEXTURE_2D, g_tileTexture); CHECK_GL_ERRORS;
@@ -139,9 +147,7 @@ GLUSboolean init(GLUSvoid)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); CHECK_GL_ERRORS;
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); CHECK_GL_ERRORS;
 
-    glBindTexture(GL_TEXTURE_2D, 0); CHECK_GL_ERRORS;
-
-    glusLoadTgaImage("Res/floor_n.tga", &image);
+    glusLoadTgaImage("Res/stone_n.tga", &image);
 
     glGenTextures(1, &g_tileTextureNorm); CHECK_GL_ERRORS;
     glBindTexture(GL_TEXTURE_2D, g_tileTextureNorm); CHECK_GL_ERRORS;
@@ -156,7 +162,56 @@ GLUSboolean init(GLUSvoid)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); CHECK_GL_ERRORS;
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); CHECK_GL_ERRORS;
 
+    glusLoadTgaImage("Res/wall.tga", &image);
+
+    glGenTextures(1, &g_wallTexture); CHECK_GL_ERRORS;
+    glBindTexture(GL_TEXTURE_2D, g_wallTexture); CHECK_GL_ERRORS;
+
+    glTexImage2D(GL_TEXTURE_2D, 0, image.format, image.width, image.height, 0, image.format, GL_UNSIGNED_BYTE, image.data); CHECK_GL_ERRORS;
+
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    // Trilinear filtering
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); CHECK_GL_ERRORS;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); CHECK_GL_ERRORS;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); CHECK_GL_ERRORS;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); CHECK_GL_ERRORS;
+
+    glusLoadTgaImage("Res/wall_n.tga", &image);
+
+    glGenTextures(1, &g_wallTextureNorm); CHECK_GL_ERRORS;
+    glBindTexture(GL_TEXTURE_2D, g_wallTextureNorm); CHECK_GL_ERRORS;
+
+    glTexImage2D(GL_TEXTURE_2D, 0, image.format, image.width, image.height, 0, image.format, GL_UNSIGNED_BYTE, image.data); CHECK_GL_ERRORS;
+
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    // Trilinear filtering
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); CHECK_GL_ERRORS;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); CHECK_GL_ERRORS;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); CHECK_GL_ERRORS;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); CHECK_GL_ERRORS;
+
     glBindTexture(GL_TEXTURE_2D, 0); CHECK_GL_ERRORS;
+
+    // loading model
+    GLUSshape wavefrontObj;
+    // Use a helper function to load an wavefront object file.
+    cout << int(glusLoadObjFile("monkey.obj", &wavefrontObj)) << endl;
+
+    g_numberVertices = wavefrontObj.numberVertices;
+
+    glGenBuffers(1, &g_verticesVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, g_verticesVBO);
+    glBufferData(GL_ARRAY_BUFFER, wavefrontObj.numberVertices * 4 * sizeof(GLfloat), (GLfloat*) wavefrontObj.vertices, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &g_normalsVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, g_normalsVBO);
+    glBufferData(GL_ARRAY_BUFFER, wavefrontObj.numberVertices * 3 * sizeof(GLfloat), (GLfloat*) wavefrontObj.normals, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glusDestroyShapef(&wavefrontObj);
 
     return GLUS_TRUE;
   }
@@ -364,7 +419,7 @@ GLUSboolean update(GLUSfloat time)
                                cos(r_psi - PIf / 2));                           // ... and the view matrix ...
   
     glViewport(0, 0, g_width, g_height);
-    glClearColor(0.8f, 0.8f, 0.85f, 1.0f);
+    glClearColor(0.65f, 0.6f, 0.75f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
 
@@ -387,15 +442,16 @@ GLUSboolean update(GLUSfloat time)
       //
       glusRotateRzRyRxf(rotationMatrix.L(), 0, 0, 0);
       glusScalef(scaleMatrix.L(), 10, 10, 10);
-      glusTranslatef(translateMatrix.L(), 0,0,-4);
+      glusTranslatef(translateMatrix.L(), 0,0,-8);
       glusMultMatrixf(transformMatrix1.L(), rotationMatrix.L(), scaleMatrix.L());
       glusMultMatrixf(transformMatrix2.L(), translateMatrix.L(), transformMatrix1.L());
 
       // pass matrices to the shader
       //
       setUniform(g_renderRoomProg.program, "objectMatrix", transformMatrix2);
-      setUniform(g_renderRoomProg.program, "g_diffuseColor",  float3(0.9, 0.3, 0.25));
-      setUniform(g_renderRoomProg.program, "g_specularColor", float3(0.55, 0.55, 0.55));
+      setUniform(g_renderRoomProg.program, "scale", 0.1f);
+      setUniform(g_renderRoomProg.program, "type", 0.1f);
+      setUniform(g_renderRoomProg.program, "scale_val", float2(2.0f, 2.0f));
       bindTexture(g_renderRoomProg.program, 1, "u_texture", g_tileTexture);
       bindTexture(g_renderRoomProg.program, 2, "u_texture_n", g_tileTextureNorm);
     }
@@ -412,18 +468,19 @@ GLUSboolean update(GLUSfloat time)
       // calc matrices
       //
       glusRotateRzRyRxf(rotationMatrix.L(), 90, 0, 0);
-      glusScalef(scaleMatrix.L(), 10, 3, 1);
-      glusTranslatef(translateMatrix.L(), 0,-10,-1);
+      glusScalef(scaleMatrix.L(), 10, 5, 1);
+      glusTranslatef(translateMatrix.L(), 0,-10,-3);
       glusMultMatrixf(transformMatrix1.L(), rotationMatrix.L(), scaleMatrix.L());
       glusMultMatrixf(transformMatrix2.L(), translateMatrix.L(), transformMatrix1.L());
 
       // pass matrices to the shader
       //
       setUniform(g_renderRoomProg.program, "objectMatrix", transformMatrix2);
-      setUniform(g_renderRoomProg.program, "g_diffuseColor",  float3(0.9, 0.3, 0.25));
-      setUniform(g_renderRoomProg.program, "g_specularColor", float3(0.55, 0.55, 0.55));
-      bindTexture(g_renderRoomProg.program, 1, "u_texture", 0);
-      bindTexture(g_renderRoomProg.program, 2, "u_texture_n", 0);
+      setUniform(g_renderRoomProg.program, "scale", 0.0f);
+      setUniform(g_renderRoomProg.program, "type", 2.0f);
+      setUniform(g_renderRoomProg.program, "scale_val", float2(1.0f, 0.5f));
+      bindTexture(g_renderRoomProg.program, 1, "u_texture", g_wallTexture);
+      bindTexture(g_renderRoomProg.program, 2, "u_texture_n", g_wallTextureNorm);
     }
 
     g_pRoomMesh->Draw();
@@ -434,19 +491,20 @@ GLUSboolean update(GLUSfloat time)
 
       // calc matrices
       //
-      glusRotateRzRyRxf(rotationMatrix.L(), 0, 90, 0);
-      glusScalef(scaleMatrix.L(), 3, 10, 1);
-      glusTranslatef(translateMatrix.L(), 10,0,-1);
+      glusRotateRzRyRxf(rotationMatrix.L(), 90, 0, 90);
+      glusScalef(scaleMatrix.L(), 10, 5, 1);
+      glusTranslatef(translateMatrix.L(), 10,0,-3);
       glusMultMatrixf(transformMatrix1.L(), rotationMatrix.L(), scaleMatrix.L());
       glusMultMatrixf(transformMatrix2.L(), translateMatrix.L(), transformMatrix1.L());
 
       // pass matrices to the shader
       //
       setUniform(g_renderRoomProg.program, "objectMatrix", transformMatrix2);
-      setUniform(g_renderRoomProg.program, "g_diffuseColor",  float3(0.9, 0.3, 0.25));
-      setUniform(g_renderRoomProg.program, "g_specularColor", float3(0.55, 0.55, 0.55));
-      bindTexture(g_renderRoomProg.program, 1, "u_texture", 0);
-      bindTexture(g_renderRoomProg.program, 2, "u_texture_n", 0);
+      setUniform(g_renderRoomProg.program, "scale", 0.0f);
+      setUniform(g_renderRoomProg.program, "type", 1.0f);
+      setUniform(g_renderRoomProg.program, "scale_val", float2(1.0f, 0.5f));
+      bindTexture(g_renderRoomProg.program, 1, "u_texture", g_wallTexture);
+      bindTexture(g_renderRoomProg.program, 2, "u_texture_n", g_wallTextureNorm);
     }
 
     g_pRoomMesh->Draw();

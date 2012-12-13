@@ -76,9 +76,11 @@
     <ClCompile Include="glus_load.c" />
     <ClCompile Include="glus_matrix.c" />
     <ClCompile Include="glus_modelview.c" />
+    <ClCompile Include="glus_point.c" />
     <ClCompile Include="glus_shaderprogram.c" />
     <ClCompile Include="glus_shape.c" />
     <ClCompile Include="glus_vector.c" />
+    <ClCompile Include="glus_wavefront.c" />
     <ClCompile Include="glus_windows.c" />
   </ItemGroup>
   <ItemGroup>

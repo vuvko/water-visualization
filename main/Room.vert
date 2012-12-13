@@ -7,6 +7,10 @@ uniform mat4 objectMatrix;
 uniform vec3 g_lightPos; 
 uniform vec3 g_camPos;
 
+uniform vec2 scale_val = vec2(1, 1);
+
+uniform float type;
+
 in vec4 vertex;
 in vec4 normal;
 in vec2 texCoord;
@@ -25,18 +29,25 @@ void main(void)
   worldPos  = objectMatrix*vertex;
   viewPos   = modelViewMatrix*worldPos;
 
-  fragmentTexCoord = texCoord;
+  fragmentTexCoord = vec2(texCoord.x * scale_val.x, texCoord.y * scale_val.y);
 
   fragmentNormal = normalize(objectMatrix*normal);
-  //fragmentNormal = vec3(0, 0, 1);
   
   vec3 light = normalize(vec4(g_lightPos, 1) - worldPos);
   vec3 cam = normalize(vec4(g_camPos, 1) - worldPos);
 
   //camTan = cross(fragmentNormal, (cross(cam, fragmentNormal)));
 
-  camTan = vec3(cam.x, cam.y, cam.z);
-  lightTan = vec3(light.x, light.y, light.z);
+  if (type < 0.5) {
+    camTan = vec3(cam.x, cam.y, cam.z);
+    lightTan = vec3(light.x, light.y, light.z);
+  } else if (type < 1.5) {
+    camTan = vec3(cam.y, -cam.z, -cam.x);
+    lightTan = vec3(light.y, -light.z, -light.x);
+  } else {
+    camTan = vec3(-cam.x, -cam.z, cam.y);
+    lightTan = vec3(-light.x, -light.z, light.y);
+  }
   
   camPos = g_camPos;
   lightPos = g_lightPos;
