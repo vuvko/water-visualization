@@ -17,10 +17,6 @@
 
 #include "GL/glus.h"
 
-#include <GL/glew.h>
-#include <stdio.h>
-#include <stdlib.h>
-
 GLUSboolean GLUSAPIENTRY glusCompileProgram(GLUSshaderprogram* shaderProgram, const GLUSchar** vertexSource, const GLUSchar** controlSource, const GLUSchar** evaluationSource, const GLUSchar** geometrySource, const GLUSchar** fragmentSource)
 {
 	GLint compiled;

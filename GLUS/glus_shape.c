@@ -903,6 +903,143 @@ GLUSAPI GLUSvoid GLUSAPIENTRY glusCreateTorusf(GLUSshape* shape, GLUSfloat inner
 	}
 }
 
+GLUSboolean GLUSAPIENTRY glusCalculateTangentSpacef(GLUSshape* shape)
+{
+    GLUSuint i;
+
+    if (!shape || !shape->vertices || !shape->texCoords || shape->mode != GL_TRIANGLES)
+    {
+        return GLUS_FALSE;
+    }
+
+    // Allocate memory if needed
+    if (!shape->tangents)
+    {
+    	shape->tangents = (GLUSfloat*) malloc(3 * shape->numberVertices * sizeof(GLUSfloat));
+
+        if (!shape->tangents)
+        {
+            return GLUS_FALSE;
+        }
+    }
+
+    if (!shape->bitangents)
+    {
+    	shape->bitangents = (GLUSfloat*) malloc(3 * shape->numberVertices * sizeof(GLUSfloat));
+
+        if (!shape->bitangents)
+        {
+            return GLUS_FALSE;
+        }
+    }
+
+    // Reset all tangents to 0.0f
+    for (i = 0; i < shape->numberVertices; i++)
+    {
+    	shape->tangents[i * 3] = 0.0f;
+    	shape->tangents[i * 3 + 1] = 0.0f;
+    	shape->tangents[i * 3 + 2] = 0.0f;
+    }
+
+    if (shape->numberIndices > 0)
+    {
+    	float s1, t1, s2, t2;
+    	float Q1[4];
+    	float Q2[4];
+    	float tangent[3];
+    	float scalar;
+
+    	for (i = 0; i < shape->numberIndices; i += 3)
+    	{
+    		s1 = shape->texCoords[2*shape->indices[i+1]] - shape->texCoords[2*shape->indices[i]];
+    		t1 = shape->texCoords[2*shape->indices[i+1]+1] - shape->texCoords[2*shape->indices[i]+1];
+    		s2 = shape->texCoords[2*shape->indices[i+2]] - shape->texCoords[2*shape->indices[i]];
+    		t2 = shape->texCoords[2*shape->indices[i+2]+1] - shape->texCoords[2*shape->indices[i]+1];
+
+    		scalar = 1.0f / (s1*t2-s2*t1);
+
+    		glusPoint4SubtractPoint4f(Q1, &shape->vertices[4*shape->indices[i+1]], &shape->vertices[4*shape->indices[i]]);
+    		Q1[3] = 1.0f;
+    		glusPoint4SubtractPoint4f(Q2, &shape->vertices[4*shape->indices[i+2]], &shape->vertices[4*shape->indices[i]]);
+    		Q2[3] = 1.0f;
+
+    		tangent[0] = scalar * (t2 * Q1[0] - t1 * Q2[0]);
+    		tangent[1] = scalar * (t2 * Q1[1] - t1 * Q2[1]);
+    		tangent[2] = scalar * (t2 * Q1[2] - t1 * Q2[2]);
+
+    		glusVector3Normalizef(tangent);
+
+        	shape->tangents[3 * shape->indices[i]] += tangent[0];
+        	shape->tangents[3 * shape->indices[i] + 1] += tangent[1];
+        	shape->tangents[3 * shape->indices[i] + 2] += tangent[2];
+
+        	shape->tangents[3 * shape->indices[i+1]] += tangent[0];
+        	shape->tangents[3 * shape->indices[i+1] + 1] += tangent[1];
+        	shape->tangents[3 * shape->indices[i+1] + 2] += tangent[2];
+
+        	shape->tangents[3 * shape->indices[i+2]] += tangent[0];
+        	shape->tangents[3 * shape->indices[i+2] + 1] += tangent[1];
+        	shape->tangents[3 * shape->indices[i+2] + 2] += tangent[2];
+    	}
+    }
+    else
+    {
+    	float s1, t1, s2, t2;
+    	float Q1[4];
+    	float Q2[4];
+    	float tangent[3];
+    	float scalar;
+
+    	for (i = 0; i < shape->numberVertices; i += 3)
+    	{
+    		s1 = shape->texCoords[2*(i+1)] - shape->texCoords[2*i];
+    		t1 = shape->texCoords[2*(i+1)+1] - shape->texCoords[2*i+1];
+    		s2 = shape->texCoords[2*(i+2)] - shape->texCoords[2*i];
+    		t2 = shape->texCoords[2*(i+2)+1] - shape->texCoords[2*i+1];
+
+    		scalar = 1.0f / (s1*t2-s2*t1);
+
+    		glusPoint4SubtractPoint4f(Q1, &shape->vertices[4*(i+1)], &shape->vertices[4*i]);
+    		Q1[3] = 1.0f;
+    		glusPoint4SubtractPoint4f(Q2, &shape->vertices[4*(i+2)], &shape->vertices[4*i]);
+    		Q2[3] = 1.0f;
+
+    		tangent[0] = scalar * (t2 * Q1[0] - t1 * Q2[0]);
+    		tangent[1] = scalar * (t2 * Q1[1] - t1 * Q2[1]);
+    		tangent[2] = scalar * (t2 * Q1[2] - t1 * Q2[2]);
+
+    		glusVector3Normalizef(tangent);
+
+        	shape->tangents[3 * i] += tangent[0];
+        	shape->tangents[3 * i + 1] += tangent[1];
+        	shape->tangents[3 * i + 2] += tangent[2];
+
+        	shape->tangents[3 * (i+1)] += tangent[0];
+        	shape->tangents[3 * (i+1) + 1] += tangent[1];
+        	shape->tangents[3 * (i+1) + 2] += tangent[2];
+
+        	shape->tangents[3 * (i+2)] += tangent[0];
+        	shape->tangents[3 * (i+2) + 1] += tangent[1];
+        	shape->tangents[3 * (i+2) + 2] += tangent[2];
+    	}
+    }
+
+    // Normalize, as several triangles have added a vector
+    for (i = 0; i < shape->numberVertices; i++)
+    {
+		glusVector3Normalizef(&(shape->tangents[i * 3]));
+    }
+
+    // Calculate bitangents out of tangents and normals
+    for (i = 0; i < shape->numberVertices; i++)
+    {
+        glusVector3Crossf(&(shape->bitangents[i * 3]), &(shape->normals[i * 3]), &(shape->tangents[i * 3]));
+    }
+
+    return GLUS_TRUE;
+}
+
+
 GLUSvoid GLUSAPIENTRY glusDestroyShapef(GLUSshape* shape)
 {
 	if (!shape)

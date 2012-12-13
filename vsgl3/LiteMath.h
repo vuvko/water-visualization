@@ -4,6 +4,8 @@
 
 struct float2
 {
+  float2():x(0), y(0) {}
+  float2(float a, float b): x(a), y(b) {}
   float x,y;
 };
 
