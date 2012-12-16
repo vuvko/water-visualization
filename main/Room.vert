@@ -33,8 +33,8 @@ void main(void)
 
   fragmentNormal = normalize(objectMatrix*normal);
   
-  vec3 light = normalize(vec4(g_lightPos, 1) - worldPos);
-  vec3 cam = normalize(vec4(g_camPos, 1) - worldPos);
+  vec3 light = normalize(g_lightPos - vec3(worldPos));
+  vec3 cam = normalize(g_camPos - vec3(worldPos));
 
   //camTan = cross(fragmentNormal, (cross(cam, fragmentNormal)));
 

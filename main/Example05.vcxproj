@@ -103,7 +103,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Quad.vert" />
-    <None Include="Res\boat.mtl" />
+    <None Include="Res\object.tga" />
     <None Include="Res\stone.tga" />
     <None Include="Res\stone_n.tga" />
     <None Include="Res\wall.tga" />
@@ -123,9 +123,6 @@
       <Project>{2758dd4a-78f6-452f-bbf5-4e86b46bd2ea}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Res\boat.obj" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
