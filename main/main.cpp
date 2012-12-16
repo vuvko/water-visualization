@@ -58,9 +58,10 @@ bool g_simulate = true;
 
 
 SimpleMesh* g_pRoomMesh  = NULL;
+SimpleMesh* g_pObject  = NULL;
 Water* g_pWater = NULL;
 
-static GLuint g_tileTexture, g_tileTextureNorm, g_wallTexture, g_wallTextureNorm;
+static GLuint g_tileTexture, g_tileTextureNorm, g_wallTexture, g_wallTextureNorm, g_objectTexture;
 
 static GLuint g_verticesVBO;
 
@@ -127,6 +128,7 @@ GLUSboolean init(GLUSvoid)
     g_renderRoomProg   = ShaderProgram("../main/Room.vert", "../main/Room.frag");
     
     g_pRoomMesh        = new SimpleMesh(g_renderRoomProg.program, 2,   SimpleMesh::PLANE,  1.0f);
+    g_pObject          = new SimpleMesh(g_renderRoomProg.program, 2, SimpleMesh::CUBE, 1.0f);
     g_pWater           = new Water();
 
     // Texture set up.
@@ -192,26 +194,22 @@ GLUSboolean init(GLUSvoid)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); CHECK_GL_ERRORS;
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); CHECK_GL_ERRORS;
 
+    glusLoadTgaImage("Res/object.tga", &image);
+
+    glGenTextures(1, &g_objectTexture); CHECK_GL_ERRORS;
+    glBindTexture(GL_TEXTURE_2D, g_objectTexture); CHECK_GL_ERRORS;
+
+    glTexImage2D(GL_TEXTURE_2D, 0, image.format, image.width, image.height, 0, image.format, GL_UNSIGNED_BYTE, image.data); CHECK_GL_ERRORS;
+
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    // Trilinear filtering
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); CHECK_GL_ERRORS;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); CHECK_GL_ERRORS;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); CHECK_GL_ERRORS;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); CHECK_GL_ERRORS;
+
     glBindTexture(GL_TEXTURE_2D, 0); CHECK_GL_ERRORS;
-
-    // loading model
-    GLUSshape wavefrontObj;
-    // Use a helper function to load an wavefront object file.
-    cout << int(glusLoadObjFile("monkey.obj", &wavefrontObj)) << endl;
-
-    g_numberVertices = wavefrontObj.numberVertices;
-
-    glGenBuffers(1, &g_verticesVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, g_verticesVBO);
-    glBufferData(GL_ARRAY_BUFFER, wavefrontObj.numberVertices * 4 * sizeof(GLfloat), (GLfloat*) wavefrontObj.vertices, GL_STATIC_DRAW);
-
-    glGenBuffers(1, &g_normalsVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, g_normalsVBO);
-    glBufferData(GL_ARRAY_BUFFER, wavefrontObj.numberVertices * 3 * sizeof(GLfloat), (GLfloat*) wavefrontObj.normals, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    glusDestroyShapef(&wavefrontObj);
 
     return GLUS_TRUE;
   }
@@ -364,6 +362,23 @@ GLUSvoid keyboard(GLUSboolean pressed, GLUSuint key)
   case VK_F6: // F6 - Resume
     g_simulate = true;
     break;
+  
+  case VK_LEFT:
+    g_lightPos.x -= shift;
+    break;
+
+  case VK_RIGHT:
+    g_lightPos.x += shift;
+    break;
+
+  case VK_UP:
+    g_lightPos.y -= shift;
+    break;
+
+  case VK_DOWN:
+    g_lightPos.y += shift;
+    break;
+  
   }
 
   input.scene_pos[0] += dx;
@@ -398,6 +413,8 @@ GLUSboolean update(GLUSfloat time)
     g_camPos.x = camPos.x;
     g_camPos.y = camPos.y;
     g_camPos.z = camPos.z;
+
+    //cout << g_lightPos.x << ' ' << g_lightPos.y << ' ' << g_lightPos.z << endl;
 
     /*
     cout << "-----" << endl;
@@ -508,6 +525,32 @@ GLUSboolean update(GLUSfloat time)
     }
 
     g_pRoomMesh->Draw();
+
+    // draw sphere
+    //
+    {
+      float4x4 rotationMatrix, scaleMatrix, translateMatrix;
+      float4x4 transformMatrix1, transformMatrix2;
+
+      // calc matrices
+      //
+      glusRotateRzRyRxf(rotationMatrix.L(), 0, 0, 0);
+      glusScalef(scaleMatrix.L(), 2, 2, 2);
+      glusTranslatef(translateMatrix.L(), 4,0,-6);
+      glusMultMatrixf(transformMatrix1.L(), rotationMatrix.L(), scaleMatrix.L());
+      glusMultMatrixf(transformMatrix2.L(), translateMatrix.L(), transformMatrix1.L());
+
+      // pass matrices to the shader
+      //
+      setUniform(g_renderRoomProg.program, "objectMatrix", transformMatrix2);
+      setUniform(g_renderRoomProg.program, "scale", 0.0f);
+      setUniform(g_renderRoomProg.program, "type", 5.0f);
+      setUniform(g_renderRoomProg.program, "scale_val", float2(1.0f, 1.0f));
+      bindTexture(g_renderRoomProg.program, 1, "u_texture", g_objectTexture);
+      bindTexture(g_renderRoomProg.program, 2, "u_texture_n", 0);
+    }
+
+    g_pObject->Draw();
     
     if (g_simulate) { // everything that moves
       g_pWater->SimStep(); // water simulation step
