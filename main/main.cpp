@@ -20,6 +20,7 @@ using namespace std;
 static const double eps = 0.00001;
 
 ShaderProgram g_renderRoomProg;
+ShaderProgram g_renderObject;
 
 struct MyInput
 {
@@ -125,7 +126,8 @@ GLUSboolean init(GLUSvoid)
     PrintGLInfo();
     SetVSync(1);
 
-    g_renderRoomProg   = ShaderProgram("../main/Room.vert", "../main/Room.frag");
+    g_renderRoomProg   = ShaderProgram("Shaders/Room.vert", "Shaders/Room.frag");
+    g_renderObject     = ShaderProgram("Shaders/Object.vert", "Shaders/Object.frag");
     
     g_pRoomMesh        = new SimpleMesh(g_renderRoomProg.program, 2,   SimpleMesh::PLANE,  1.0f);
     g_pObject          = new SimpleMesh(g_renderRoomProg.program, 2, SimpleMesh::CUBE, 1.0f);
@@ -281,7 +283,7 @@ GLUSvoid mouseMove(GLUSuint button, GLUSint x, GLUSint y)
 
   if(button & 4)
   {
-    //g_pWater->AddWave(0.5, 0.5); // 
+    //g_pWater->AddWave(0.5, 0.5);
     g_pWater->AddWave((GLUSfloat)x / g_width, (GLUSfloat)y / g_height);
   }
 
@@ -414,31 +416,47 @@ GLUSboolean update(GLUSfloat time)
     g_camPos.y = camPos.y;
     g_camPos.z = camPos.z;
 
-    //cout << g_lightPos.x << ' ' << g_lightPos.y << ' ' << g_lightPos.z << endl;
-
-    /*
-    cout << "-----" << endl;
-    cout << input.scene_pos[0] << ' ' << input.scene_pos[1] << ' ' << input.scene_pos[2] << endl;
-    cout << input.cam_rot[0] << ' ' << input.cam_rot[1] << ' ' << input.cam_dist << endl;
-    cout << camPos.x << ' ' << camPos.y << ' ' << camPos.z << endl;
-    cout << sin(r_psi - PIf / 2) * cos(r_phi) << ' ' <<
-                               cos(r_psi - PIf / 2) << ' ' <<
-                               sin(r_psi - PIf / 2) * sin(r_phi) << endl;
-    */
-    //cout << g_camPos.x << ' ' << g_camPos.y << ' ' << g_camPos.z << endl;
-    
-
     float4x4 modelView;
     glusLookAtf(modelView.L(), camPos.x, camPos.y, camPos.z, 
                                input.scene_pos[0], input.scene_pos[1], input.scene_pos[2],
                                sin(r_psi - PIf / 2) * cos(r_phi),
                                sin(r_psi - PIf / 2) * sin(r_phi),
-                               cos(r_psi - PIf / 2));                           // ... and the view matrix ...
-  
+                               cos(r_psi - PIf / 2));                          
+
     glViewport(0, 0, g_width, g_height);
     glClearColor(0.65f, 0.6f, 0.75f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
+
+    // draw object
+    //
+    glUseProgram(g_renderObject.program);
+
+    setUniform(g_renderObject.program, "g_camPos", g_camPos);
+    setUniform(g_renderObject.program, "g_lightPos", g_lightPos);
+    setUniform(g_renderObject.program, "modelViewMatrix", modelView);
+    setUniform(g_renderObject.program, "projectionMatrix", g_projectionMatrix);  // set matrix we have calculated in "reshape" funtion
+
+    {
+      float4x4 rotationMatrix, scaleMatrix, translateMatrix;
+      float4x4 transformMatrix1, transformMatrix2;
+
+      // calc matrices
+      //
+      glusRotateRzRyRxf(rotationMatrix.L(), 0, 0, 0);
+      glusScalef(scaleMatrix.L(), 2, 2, 2);
+      glusTranslatef(translateMatrix.L(), 4,0,-5.9);
+      glusMultMatrixf(transformMatrix1.L(), rotationMatrix.L(), scaleMatrix.L());
+      glusMultMatrixf(transformMatrix2.L(), translateMatrix.L(), transformMatrix1.L());
+
+      // pass matrices to the shader
+      //
+      setUniform(g_renderObject.program, "objectMatrix", transformMatrix2);
+      setUniform(g_renderObject.program, "scale_val", float2(1.0f, 1.0f));
+      bindTexture(g_renderObject.program, 1, "u_texture", g_objectTexture);
+    }
+
+    g_pObject->Draw();
 
     // draw room
     //
@@ -525,32 +543,6 @@ GLUSboolean update(GLUSfloat time)
     }
 
     g_pRoomMesh->Draw();
-
-    // draw sphere
-    //
-    {
-      float4x4 rotationMatrix, scaleMatrix, translateMatrix;
-      float4x4 transformMatrix1, transformMatrix2;
-
-      // calc matrices
-      //
-      glusRotateRzRyRxf(rotationMatrix.L(), 0, 0, 0);
-      glusScalef(scaleMatrix.L(), 2, 2, 2);
-      glusTranslatef(translateMatrix.L(), 4,0,-6);
-      glusMultMatrixf(transformMatrix1.L(), rotationMatrix.L(), scaleMatrix.L());
-      glusMultMatrixf(transformMatrix2.L(), translateMatrix.L(), transformMatrix1.L());
-
-      // pass matrices to the shader
-      //
-      setUniform(g_renderRoomProg.program, "objectMatrix", transformMatrix2);
-      setUniform(g_renderRoomProg.program, "scale", 0.0f);
-      setUniform(g_renderRoomProg.program, "type", 5.0f);
-      setUniform(g_renderRoomProg.program, "scale_val", float2(1.0f, 1.0f));
-      bindTexture(g_renderRoomProg.program, 1, "u_texture", g_objectTexture);
-      bindTexture(g_renderRoomProg.program, 2, "u_texture_n", 0);
-    }
-
-    g_pObject->Draw();
     
     if (g_simulate) { // everything that moves
       g_pWater->SimStep(); // water simulation step
