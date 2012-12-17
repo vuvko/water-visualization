@@ -3,8 +3,8 @@
 
 Water::Water()
 {
-  m_renderProg = ShaderProgram("../main/Water.vert", "../main/Water.frag");
-  m_simProgram = ShaderProgram("../main/Quad.vert", "../main/WaterSimStep.frag");
+  m_renderProg = ShaderProgram("Shaders/Water.vert", "Shaders/Water.frag");
+  m_simProgram = ShaderProgram("Shaders/Quad.vert", "Shaders/WaterSimStep.frag");
   
   m_pWaterMesh = new SimpleMesh(m_renderProg.program, 256, SimpleMesh::PLANE, 0.999999f);
   

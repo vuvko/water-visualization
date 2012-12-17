@@ -102,17 +102,19 @@
     <ClInclude Include="Water.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Quad.vert" />
     <None Include="Res\object.tga" />
     <None Include="Res\stone.tga" />
     <None Include="Res\stone_n.tga" />
     <None Include="Res\wall.tga" />
     <None Include="Res\wall_n.tga" />
-    <None Include="Room.frag" />
-    <None Include="Room.vert" />
-    <None Include="Water.frag" />
-    <None Include="Water.vert" />
-    <None Include="WaterSimStep.frag" />
+    <None Include="Shaders\Object.frag" />
+    <None Include="Shaders\Object.vert" />
+    <None Include="Shaders\Quad.vert" />
+    <None Include="Shaders\Room.frag" />
+    <None Include="Shaders\Room.vert" />
+    <None Include="Shaders\Water.frag" />
+    <None Include="Shaders\Water.vert" />
+    <None Include="Shaders\WaterSimStep.frag" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GLUS\GLUS.vcxproj">
